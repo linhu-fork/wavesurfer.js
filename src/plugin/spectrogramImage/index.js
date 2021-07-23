@@ -178,7 +178,7 @@ export default class SpectrogramImagePlugin {
                         id: e.id,
                         start: e.start,
                         end: e.end,
-                        element: region,
+                        element: region
                     });
                     region.dataset.regionId = e.id;
                     this.tempArea = [];
@@ -187,7 +187,7 @@ export default class SpectrogramImagePlugin {
             }
 
             // 更新波形选区位置和大小,同步频谱选区位置和大小
-            if (this.moveRegion.drag) return;
+            if (this.moveRegion.drag) { return; }
             const waveRegion = this.wavesurfer.regions.list[e.element.dataset.id];
             const imageRegion = this.regionList.find(
                 (item) => String(item.id) === String(e.element.dataset.id),
@@ -205,7 +205,7 @@ export default class SpectrogramImagePlugin {
         // Check if ws is ready
         if (this.wavesurfer.isReady) {
             this._onReady();
-            console.log('频谱图插件初始化完成!')
+            console.log('频谱图插件初始化完成!');
         }
 
         this.wavesurfer.on('ready', this._onReady);
@@ -222,8 +222,10 @@ export default class SpectrogramImagePlugin {
         this.regions.width = null;
         this.waveCreateRegion = false;
     };
+
     /**
      * 调整区域大小
+     * @param { MouseEvent } e 鼠标事件
      */
     onResize(e) {
         const { flag } = this.handleResize;
@@ -250,6 +252,7 @@ export default class SpectrogramImagePlugin {
     }
     /**
      * 移动选择区域
+     * @param {Event} e event
      */
     onMove(e) {
         if (e.target.nodeName === 'REGIONS' && this.moveRegion.drag) {
@@ -271,6 +274,7 @@ export default class SpectrogramImagePlugin {
     }
     /**
      * 正在移动选区
+     * @param {Event} e event
      */
     onRegionMove(e) {
         const duration = this.wavesurfer.getDuration();
@@ -326,6 +330,8 @@ export default class SpectrogramImagePlugin {
     }
     /**
      * 拖动选区计算位置
+     * @param { Number } delta delta
+     * @param { HtmlElement } target target
      */
     onRegionDrag(delta, target) {
         const maxEnd = this.wavesurfer.getDuration();
@@ -352,6 +358,8 @@ export default class SpectrogramImagePlugin {
     }
     /**
      * 调整选区大小计算位置
+     * @param { Number } delta delta
+     * @param { String } direction handle start or end
      */
     onRegionResize(delta, direction) {
         const duration = this.wavesurfer.getDuration();
@@ -401,9 +409,11 @@ export default class SpectrogramImagePlugin {
     }
     /**
      * 添加新区域
+     * @param {Event} e event
+     * @param {Function} callback callback
      */
     onAddRegion(e, callback) {
-        if (!this.regions.flag) return;
+        if (!this.regions.flag) { return; }
         if (this.tempArea.length === 0) {
             // 创建区域元素
             const regionsEle = document.createElement('regions');
@@ -415,7 +425,7 @@ export default class SpectrogramImagePlugin {
                 position: 'absolute',
                 backgroundColor: 'rgba(255, 255, 255, 0.5)',
                 cursor: 'move'
-            })
+            });
             if (this.regions.width) {
                 regionsEle.style.width = `${this.regions.width}px`;
             }
@@ -429,7 +439,7 @@ export default class SpectrogramImagePlugin {
                 cursor: 'col-resize',
                 borderLeft: '2px solid #fff',
                 left: 0
-            })
+            });
             handleStart.addEventListener('mousedown', event => {
                 const duration = this.wavesurfer.getDuration();
                 this.moveRegionPosition.startTime = this.wavesurfer.regions.util.getRegionSnapToGridValue(
@@ -453,7 +463,7 @@ export default class SpectrogramImagePlugin {
                 cursor: 'col-resize',
                 borderLeft: '2px solid #fff',
                 right: 0
-            })
+            });
             handleEnd.addEventListener('mousedown', event => {
                 const duration = this.wavesurfer.getDuration();
                 this.moveRegionPosition.startTime = this.wavesurfer.regions.util.getRegionSnapToGridValue(
@@ -484,7 +494,8 @@ export default class SpectrogramImagePlugin {
         }
     }
     /**
-     * 获取start、end位置
+     *  获取start、end位置
+     * @param {Event} e event
      */
     onGetPosition(e) {
         this.currentEnd = this.drawer.handleEvent(e);
@@ -547,6 +558,8 @@ export default class SpectrogramImagePlugin {
     }
     /**
      * 移除px单位,返回数值用来计算
+     * @param { String } str str
+     * @returns  Number
      */
     getNumber(str) {
         return Number(str.replace('px', ''));
