@@ -1,6 +1,6 @@
 import * as util from './util';
 
-// using consts to prevent someone writing the string wrong
+// using constants to prevent someone writing the string wrong
 const PLAYING = 'playing';
 const PAUSED = 'paused';
 const FINISHED = 'finished';
@@ -11,9 +11,9 @@ const FINISHED = 'finished';
  * @extends {Observer}
  */
 export default class WebAudio extends util.Observer {
-    /** @private */
+    /** scriptBufferSize: size of the processing buffer */
     static scriptBufferSize = 256;
-    /** @private */
+    /** audioContext: allows to process audio with WebAudio API */
     audioContext = null;
     /** @private */
     offlineAudioContext = null;
@@ -60,7 +60,7 @@ export default class WebAudio extends util.Observer {
     /**
      * Does the browser support this backend
      *
-     * @return {boolean}
+     * @return {boolean} Whether or not this browser supports this backend
      */
     supportsWebAudio() {
         return !!(window.AudioContext || window.webkitAudioContext);
@@ -69,7 +69,7 @@ export default class WebAudio extends util.Observer {
     /**
      * Get the audio context used by this backend or create one
      *
-     * @return {AudioContext}
+     * @return {AudioContext} Existing audio context, or creates a new one
      */
     getAudioContext() {
         if (!window.WaveSurferAudioContext) {
@@ -82,8 +82,9 @@ export default class WebAudio extends util.Observer {
     /**
      * Get the offline audio context used by this backend or create one
      *
-     * @param {number} sampleRate
-     * @return {OfflineAudioContext}
+     * @param {number} sampleRate The sample rate to use
+     * @return {OfflineAudioContext} Existing offline audio context, or creates
+     * a new one
      */
     getOfflineAudioContext(sampleRate) {
         if (!window.WaveSurferOfflineAudioContext) {
@@ -96,19 +97,21 @@ export default class WebAudio extends util.Observer {
     /**
      * Construct the backend
      *
-     * @param {WavesurferParams} params
+     * @param {WavesurferParams} params Wavesurfer parameters
      */
     constructor(params) {
         super();
         /** @private */
         this.params = params;
-        /** @private */
-        this.ac = params.audioContext || this.getAudioContext();
+        /** ac: Audio Context instance */
+        this.ac =
+            params.audioContext ||
+            (this.supportsWebAudio() ? this.getAudioContext() : {});
         /**@private */
         this.lastPlay = this.ac.currentTime;
         /** @private */
         this.startPosition = 0;
-        /** @private  */
+        /** @private */
         this.scheduledPause = null;
         /** @private */
         this.states = {
@@ -117,12 +120,10 @@ export default class WebAudio extends util.Observer {
             [FINISHED]: Object.create(this.stateBehaviors[FINISHED])
         };
         /** @private */
-        this.analyser = null;
-        /** @private */
         this.buffer = null;
         /** @private */
         this.filters = [];
-        /** @private */
+        /** gainNode: allows to control audio volume */
         this.gainNode = null;
         /** @private */
         this.mergedPeaks = null;
@@ -132,9 +133,9 @@ export default class WebAudio extends util.Observer {
         this.peaks = null;
         /** @private */
         this.playbackRate = 1;
-        /** @private */
+        /** analyser: provides audio analysis information */
         this.analyser = null;
-        /** @private */
+        /** scriptNode: allows processing audio */
         this.scriptNode = null;
         /** @private */
         this.source = null;
@@ -143,7 +144,11 @@ export default class WebAudio extends util.Observer {
         /** @private */
         this.state = null;
         /** @private */
-        this.explicitDuration = null;
+        this.explicitDuration = params.duration;
+        /**
+         * Boolean indicating if the backend was destroyed.
+         */
+        this.destroyed = false;
     }
 
     /**
@@ -171,7 +176,11 @@ export default class WebAudio extends util.Observer {
         }
     }
 
-    /** @private */
+    /**
+     * @private
+     *
+     * @param {string} state The new state
+     */
     setState(state) {
         if (this.state !== this.states[state]) {
             this.state = this.states[state];
@@ -182,7 +191,7 @@ export default class WebAudio extends util.Observer {
     /**
      * Unpacked `setFilters()`
      *
-     * @param {...AudioNode} filters
+     * @param {...AudioNode} filters One or more filters to set
      */
     setFilter(...filters) {
         this.setFilters(filters);
@@ -216,8 +225,7 @@ export default class WebAudio extends util.Observer {
                 .connect(this.gainNode);
         }
     }
-
-    /** @private */
+    /** Create ScriptProcessorNode to process audio */
     createScriptNode() {
         if (this.params.audioScriptProcessor) {
             this.scriptNode = this.params.audioScriptProcessor;
@@ -255,8 +263,7 @@ export default class WebAudio extends util.Observer {
     removeOnAudioProcess() {
         this.scriptNode.onaudioprocess = null;
     }
-
-    /** @private */
+    /** Create analyser node to perform audio analysis */
     createAnalyserNode() {
         this.analyser = this.ac.createAnalyser();
         this.analyser.connect(this.gainNode);
@@ -265,7 +272,6 @@ export default class WebAudio extends util.Observer {
     /**
      * Create the gain node needed to control the playback volume.
      *
-     * @private
      */
     createVolumeNode() {
         // Create gain node using the AudioContext
@@ -282,6 +288,8 @@ export default class WebAudio extends util.Observer {
      * Set the sink id for the media player
      *
      * @param {string} deviceId String value representing audio device id.
+     * @returns {Promise} A Promise that resolves to `undefined` when there
+     * are no errors.
      */
     setSinkId(deviceId) {
         if (deviceId) {
@@ -297,7 +305,7 @@ export default class WebAudio extends util.Observer {
                 );
             }
             audio.autoplay = true;
-            var dest = this.ac.createMediaStreamDestination();
+            const dest = this.ac.createMediaStreamDestination();
             this.gainNode.disconnect();
             this.gainNode.connect(dest);
             audio.srcObject = dest.stream;
@@ -326,35 +334,54 @@ export default class WebAudio extends util.Observer {
         return this.gainNode.gain.value;
     }
 
-    /** @private */
+    /**
+     * Decode an array buffer and pass data to a callback
+     *
+     * @private
+     * @param {ArrayBuffer} arraybuffer The array buffer to decode
+     * @param {function} callback The function to call on complete.
+     * @param {function} errback The function to call on error.
+     */
     decodeArrayBuffer(arraybuffer, callback, errback) {
         if (!this.offlineAc) {
             this.offlineAc = this.getOfflineAudioContext(
-                this.ac ? this.ac.sampleRate : 44100
+                this.ac && this.ac.sampleRate ? this.ac.sampleRate : 44100
             );
         }
-        this.offlineAc.decodeAudioData(
-            arraybuffer,
-            data => callback(data),
-            errback
-        );
+        if ('webkitAudioContext' in window) {
+            // Safari: no support for Promise-based decodeAudioData enabled
+            // Enable it in Safari using the Experimental Features > Modern WebAudio API option
+            this.offlineAc.decodeAudioData(
+                arraybuffer,
+                data => callback(data),
+                errback
+            );
+        } else {
+            this.offlineAc.decodeAudioData(arraybuffer).then(
+                (data) => callback(data)
+            ).catch(
+                (err) => errback(err)
+            );
+        }
     }
 
     /**
      * Set pre-decoded peaks
      *
-     * @param {number[]|number[][]} peaks
-     * @param {?number} duration
+     * @param {number[]|Number.<Array[]>} peaks Peaks data
+     * @param {?number} duration Explicit duration
      */
     setPeaks(peaks, duration) {
-        this.explicitDuration = duration;
+        if (duration != null) {
+            this.explicitDuration = duration;
+        }
         this.peaks = peaks;
     }
 
     /**
-     * Set the rendered length (different from the length of the audio).
+     * Set the rendered length (different from the length of the audio)
      *
-     * @param {number} length
+     * @param {number} length The rendered length
      */
     setLength(length) {
         // No resize, we can preserve the cached peaks.
@@ -383,18 +410,27 @@ export default class WebAudio extends util.Observer {
      * @param {number} length How many subranges to break the waveform into.
      * @param {number} first First sample in the required range.
      * @param {number} last Last sample in the required range.
-     * @return {number[]|number[][]} Array of 2*<length> peaks or array of arrays of
+     * @return {number[]|Number.<Array[]>} Array of 2*<length> peaks or array of arrays of
      * peaks consisting of (max, min) values for each subrange.
      */
     getPeaks(length, first, last) {
         if (this.peaks) {
             return this.peaks;
         }
+        if (!this.buffer) {
+            return [];
+        }
 
         first = first || 0;
         last = last || length - 1;
 
         this.setLength(length);
+
+        if (!this.buffer) {
+            return this.params.splitChannels
+                ? this.splitPeaks
+                : this.mergedPeaks;
+        }
 
         /**
          * The following snippet fixes a buffering data issue on the Safari
@@ -421,8 +457,14 @@ export default class WebAudio extends util.Observer {
             for (i = first; i <= last; i++) {
                 const start = ~~(i * sampleSize);
                 const end = ~~(start + sampleSize);
-                let min = 0;
-                let max = 0;
+                /**
+                 * Initialize the max and min to the first sample of this
+                 * subrange, so that even if the samples are entirely
+                 * on one side of zero, we still return the true max and
+                 * min values in the subrange.
+                 */
+                let min = chan[start];
+                let max = min;
                 let j;
 
                 for (j = start; j < end; j += sampleStep) {
@@ -456,7 +498,7 @@ export default class WebAudio extends util.Observer {
     /**
      * Get the position from 0 to 1
      *
-     * @return {number}
+     * @return {number} Position
      */
     getPlayedPercents() {
         return this.state.getPlayedPercents.call(this);
@@ -468,16 +510,10 @@ export default class WebAudio extends util.Observer {
             this.source.disconnect();
         }
     }
-
     /**
-     * This is called when wavesurfer is destroyed
+     * Destroy all references with WebAudio, disconnecting audio nodes and closing Audio Context
      */
-    destroy() {
-        if (!this.isPaused()) {
-            this.pause();
-        }
-        this.unAll();
-        this.buffer = null;
+    destroyWebAudio() {
         this.disconnectFilters();
         this.disconnectSource();
         this.gainNode.disconnect();
@@ -506,11 +542,24 @@ export default class WebAudio extends util.Observer {
             window.WaveSurferOfflineAudioContext = null;
         }
     }
+    /**
+     * This is called when wavesurfer is destroyed
+     */
+    destroy() {
+        if (!this.isPaused()) {
+            this.pause();
+        }
+        this.unAll();
+        this.buffer = null;
+        this.destroyed = true;
+
+        this.destroyWebAudio();
+    }
 
     /**
      * Loaded a decoded audio buffer
      *
-     * @param {Object} buffer
+     * @param {Object} buffer Decoded audio buffer to load
      */
     load(buffer) {
         this.startPosition = 0;
@@ -528,18 +577,26 @@ export default class WebAudio extends util.Observer {
         this.source.start = this.source.start || this.source.noteGrainOn;
         this.source.stop = this.source.stop || this.source.noteOff;
 
-        this.source.playbackRate.setValueAtTime(
-            this.playbackRate,
-            this.ac.currentTime
-        );
+        this.setPlaybackRate(this.playbackRate);
         this.source.buffer = this.buffer;
         this.source.connect(this.analyser);
     }
 
     /**
+     * @private
+     *
+     * some browsers require an explicit call to #resume before they will play back audio
+     */
+    resumeAudioContext() {
+        if (this.ac.state == 'suspended') {
+            this.ac.resume && this.ac.resume();
+        }
+    }
+
+    /**
      * Used by `wavesurfer.isPlaying()` and `wavesurfer.playPause()`
      *
-     * @return {boolean}
+     * @return {boolean} Whether or not this backend is currently paused
      */
     isPaused() {
         return this.state !== this.states[PLAYING];
@@ -548,13 +605,13 @@ export default class WebAudio extends util.Observer {
     /**
      * Used by `wavesurfer.getDuration()`
      *
-     * @return {number}
+     * @return {number} Duration of loaded buffer
      */
     getDuration() {
+        if (this.explicitDuration) {
+            return this.explicitDuration;
+        }
         if (!this.buffer) {
-            if (this.explicitDuration) {
-                return this.explicitDuration;
-            }
             return 0;
         }
         return this.buffer.duration;
@@ -565,7 +622,8 @@ export default class WebAudio extends util.Observer {
      *
      * @param {number} start Position to start at in seconds
      * @param {number} end Position to end at in seconds
-     * @return {{start: number, end: number}}
+     * @return {{start: number, end: number}} Object containing start and end
+     * positions
      */
     seekTo(start, end) {
         if (!this.buffer) {
@@ -600,7 +658,7 @@ export default class WebAudio extends util.Observer {
     /**
      * Get the playback position in seconds
      *
-     * @return {number}
+     * @return {number} The playback position in seconds
      */
     getPlayedTime() {
         return (this.ac.currentTime - this.lastPlay) * this.playbackRate;
@@ -628,11 +686,9 @@ export default class WebAudio extends util.Observer {
 
         this.scheduledPause = end;
 
-        this.source.start(0, start, end - start);
+        this.source.start(0, start);
 
-        if (this.ac.state == 'suspended') {
-            this.ac.resume && this.ac.resume();
-        }
+        this.resumeAudioContext();
 
         this.setState(PLAYING);
 
@@ -646,7 +702,16 @@ export default class WebAudio extends util.Observer {
         this.scheduledPause = null;
 
         this.startPosition += this.getPlayedTime();
-        this.source && this.source.stop(0);
+        try {
+            this.source && this.source.stop(0);
+        } catch (err) {
+            // Calling stop can throw the following 2 errors:
+            // - RangeError (The value specified for when is negative.)
+            // - InvalidStateNode (The node has not been started by calling start().)
+            // We can safely ignore both errors, because:
+            // - The range is surely correct
+            // - The node might not have been started yet, in which case we just want to carry on without causing any trouble.
+        }
 
         this.setState(PAUSED);
 
@@ -654,10 +719,10 @@ export default class WebAudio extends util.Observer {
     }
 
     /**
-     * Returns the current time in seconds relative to the audioclip's
+     * Returns the current time in seconds relative to the audio-clip's
      * duration.
      *
-     * @return {number}
+     * @return {number} The current time in seconds
      */
     getCurrentTime() {
         return this.state.getCurrentTime.call(this);
@@ -666,7 +731,7 @@ export default class WebAudio extends util.Observer {
     /**
      * Returns the current playback rate. (0=no playback, 1=normal playback)
      *
-     * @return {number}
+     * @return {number} The current playback rate
      */
     getPlaybackRate() {
         return this.playbackRate;
@@ -675,16 +740,23 @@ export default class WebAudio extends util.Observer {
     /**
      * Set the audio source playback rate.
      *
-     * @param {number} value
+     * @param {number} value The playback rate to use
      */
     setPlaybackRate(value) {
-        value = value || 1;
-        if (this.isPaused()) {
-            this.playbackRate = value;
-        } else {
-            this.pause();
-            this.playbackRate = value;
-            this.play();
-        }
+        this.playbackRate = value || 1;
+        this.source && this.source.playbackRate.setValueAtTime(
+            this.playbackRate,
+            this.ac.currentTime
+        );
+    }
+
+    /**
+     * Set a point in seconds for playback to stop at.
+     *
+     * @param {number} end Position to end at
+     * @version 3.3.0
+     */
+    setPlayEnd(end) {
+        this.scheduledPause = end;
     }
 }

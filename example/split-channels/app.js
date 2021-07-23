@@ -1,5 +1,6 @@
 // Create an instance
 var wavesurfer;
+let wavesurferWithOptions;
 
 window.onload = function() {
     wavesurfer = WaveSurfer.create({
@@ -7,8 +8,12 @@ window.onload = function() {
         splitChannels: true
     });
 
+    wavesurfer.on('error', function(e) {
+        console.warn(e);
+    });
+
     // Load audio from URL
-    wavesurfer.load('stereo.mp3');
+    wavesurfer.load('../media/stereo.mp3');
 
     // Play/pause on button press
     document
@@ -16,7 +21,7 @@ window.onload = function() {
         .addEventListener('click', wavesurfer.playPause.bind(wavesurfer));
 
     // Drag'n'drop
-    var toggleActive = function(e, toggle) {
+    let toggleActive = function(e, toggle) {
         e.stopPropagation();
         e.preventDefault();
         toggle
@@ -24,7 +29,7 @@ window.onload = function() {
             : e.target.classList.remove('wavesurfer-dragover');
     };
 
-    var handlers = {
+    let handlers = {
         // Drop event
         drop: function(e) {
             toggleActive(e, false);
@@ -48,8 +53,42 @@ window.onload = function() {
         }
     };
 
-    var dropTarget = document.querySelector('#drop');
+    let dropTarget = document.querySelector('#drop');
     Object.keys(handlers).forEach(function(event) {
         dropTarget.addEventListener(event, handlers[event]);
     });
+
+    // WaveSurfer with options example
+    wavesurferWithOptions = WaveSurfer.create({
+        container: document.querySelector('#waveform-with-options'),
+        splitChannels: true,
+        splitChannelsOptions: {
+            overlay: false,
+            channelColors: {
+                0: {
+                    progressColor: 'green',
+                    waveColor: 'pink'
+                },
+                1: {
+                    progressColor: 'orange',
+                    waveColor: 'purple'
+                }
+            },
+            filterChannels: [],
+            relativeNormalization: true
+        }
+    });
+
+    wavesurferWithOptions.on('error', function(e) {
+        console.warn(e);
+    });
+
+    // Load audio from URL
+    wavesurferWithOptions.load('../media/stereo.mp3');
+
+    // Play/pause on button press
+    document
+        .getElementById('play-button')
+        .addEventListener('click', wavesurferWithOptions.playPause.bind(wavesurferWithOptions));
+
 };

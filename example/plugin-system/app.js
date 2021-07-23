@@ -1,10 +1,12 @@
 'use strict';
 
+import CursorCustomPlugin from './custom-plugin/CursorCustomPlugin.js';
+
 var wavesurfer;
 
 // Init & load
 document.addEventListener('DOMContentLoaded', function() {
-    var pluginOptions = {
+    let pluginOptions = {
         minimap: {
             waveColor: '#777',
             progressColor: '#222',
@@ -16,7 +18,7 @@ document.addEventListener('DOMContentLoaded', function() {
         spectrogram: {
             container: '#wave-spectrogram'
         },
-        cursor: {},
+        cursorCustom: {},
         regions: {
             regions: [
                 {
@@ -43,7 +45,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
     };
-    var options = {
+    let options = {
         container: '#waveform',
         waveColor: 'violet',
         progressColor: 'purple',
@@ -67,7 +69,7 @@ document.addEventListener('DOMContentLoaded', function() {
     [].forEach.call(
         document.querySelectorAll('[data-activate-plugin]'),
         function(el) {
-            var activePlugins = wavesurfer.initialisedPluginList;
+            let activePlugins = wavesurfer.initialisedPluginList;
             Object.keys(activePlugins).forEach(function(name) {
                 if (el.dataset.activatePlugin === name) {
                     el.checked = true;
@@ -80,11 +82,15 @@ document.addEventListener('DOMContentLoaded', function() {
         document.querySelectorAll('[data-activate-plugin]'),
         function(el) {
             el.addEventListener('change', function(e) {
-                var pluginName = e.currentTarget.dataset.activatePlugin;
-                var activate = e.target.checked;
-                var options = pluginOptions[pluginName] || {};
-                var plugin = WaveSurfer[pluginName].create(options);
-
+                let pluginName = e.currentTarget.dataset.activatePlugin;
+                let activate = e.target.checked;
+                let options = pluginOptions[pluginName] || {};
+                let plugin;
+                if (pluginName === 'cursorCustom') {
+                    plugin = CursorCustomPlugin.create(options);
+                } else {
+                    plugin = WaveSurfer[pluginName].create(options);
+                }
                 if (activate) {
                     wavesurfer.addPlugin(plugin).initPlugin(pluginName);
                 } else {
@@ -96,15 +102,15 @@ document.addEventListener('DOMContentLoaded', function() {
 
     /* Progress bar */
     (function() {
-        var progressDiv = document.querySelector('#progress-bar');
-        var progressBar = progressDiv.querySelector('.progress-bar');
+        let progressDiv = document.querySelector('#progress-bar');
+        let progressBar = progressDiv.querySelector('.progress-bar');
 
-        var showProgress = function(percent) {
+        let showProgress = function(percent) {
             progressDiv.style.display = 'block';
             progressBar.style.width = percent + '%';
         };
 
-        var hideProgress = function() {
+        let hideProgress = function() {
             progressDiv.style.display = 'none';
         };
 

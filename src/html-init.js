@@ -9,7 +9,7 @@ import loadScript from 'load-script';
  * @property {string}
  * pluginCdnTemplate='//localhost:8080/dist/plugin/wavesurfer.[name].js' URL
  * template for the dynamic loading of plugins
- * @property {function} loadPlugin If set overwrites the default ajax function,
+ * @property {function} loadPlugin If set overwrites the default request function,
  * can be used to inject plugins differently.
  */
 /**
@@ -50,7 +50,7 @@ import loadScript from 'load-script';
  */
 class Init {
     /**
-     * Instantiate Init class and initialise elements
+     * Instantiate Init class and initialize elements
      *
      * This is done automatically if `window` is defined and
      * `window.WS_StopAutoInit` is not set to true
@@ -73,7 +73,7 @@ class Init {
          * build parameters, cache them in _params so minified builds are smaller
          * @private
          */
-        const _params = (this.params = WaveSurfer.util.extend(
+        const _params = (this.params = Object.assign(
             {},
             {
                 // wavesurfer parameter defaults so by default the audio player is
@@ -87,7 +87,7 @@ class Init {
                 // @TODO insert plugin CDN URIs
                 pluginCdnTemplate:
                     '//localhost:8080/dist/plugin/wavesurfer.[name].js',
-                // loadPlugin function can be overriden to inject plugin definition
+                // loadPlugin function can be overridden to inject plugin definition
                 // objects, this default function uses load-script to load a plugin
                 // and pass it to a callback
                 loadPlugin(name, cb) {
@@ -97,6 +97,7 @@ class Init {
                     );
                     loadScript(src, { async: false }, (err, plugin) => {
                         if (err) {
+                            // eslint-disable-next-line no-console
                             return console.error(
                                 `WaveSurfer plugin ${name} not found at ${src}`
                             );
@@ -127,7 +128,7 @@ class Init {
     }
 
     /**
-     * Initialise all container elements
+     * Initialize all container elements
      */
     initAllEls() {
         // iterate over all the container elements
@@ -161,15 +162,15 @@ class Init {
     }
 
     /**
-     * Initialise a single container element and add to `this.instances`
+     * Initialize a single container element and add to `this.instances`
      *
      * @param  {HTMLElement} el The container to instantiate wavesurfer to
-     * @param  {PluginDefinition[]} plugins An Array of plugin names to initialise with
+     * @param  {PluginDefinition[]} plugins An Array of plugin names to initialize with
      * @return {Object} Wavesurfer instance
      */
     initEl(el, plugins = []) {
         const jsonRegex = /^[[|{]/;
-        // initialise plugins with the correct options
+        // initialize plugins with the correct options
         const initialisedPlugins = plugins.map(plugin => {
             const options = {};
             // the regex to find this plugin attributes
@@ -196,7 +197,7 @@ class Init {
             return this.pluginCache[plugin].create(options);
         });
         // build parameter object for this container
-        const params = this.WaveSurfer.util.extend(
+        const params = Object.assign(
             { container: el },
             this.params.defaults,
             el.dataset,
@@ -206,7 +207,7 @@ class Init {
         // @TODO make nicer
         el.style.display = 'block';
 
-        // initialise wavesurfer, load audio (with peaks if provided)
+        // initialize wavesurfer, load audio (with peaks if provided)
         const instance = this.WaveSurfer.create(params);
         const peaks = params.peaks ? JSON.parse(params.peaks) : undefined;
         instance.load(params.url, peaks);

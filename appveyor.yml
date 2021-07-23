@@ -1,6 +1,6 @@
 environment:
   matrix:
-    - nodejs_version: '9'
+    - nodejs_version: ''
 install:
   - choco install -y googlechrome --ignore-checksums
   - choco install -y firefox --ignore-checksums
@@ -19,6 +19,7 @@ shallow_clone: true
 test_script:
   - node --version
   - npm --version
+  - npm run lint
   - npm run build
   - npm run test
   - npm run doc

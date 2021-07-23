@@ -1,7 +1,5 @@
 # [wavesurfer.js](https://wavesurfer-js.org)
 
-# Read below how to update to version 2!
-
 [![npm version](https://img.shields.io/npm/v/wavesurfer.js.svg?style=flat)](https://www.npmjs.com/package/wavesurfer.js)
 ![npm](https://img.shields.io/npm/dm/wavesurfer.js.svg) [![Join the chat at https://gitter.im/katspaugh/wavesurfer.js](https://badges.gitter.im/katspaugh/wavesurfer.js.svg)](https://gitter.im/katspaugh/wavesurfer.js?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
@@ -14,7 +12,7 @@ See a [tutorial](https://wavesurfer-js.org/docs) and [examples](https://wavesurf
 ## Browser support
 wavesurfer.js works only in [modern browsers supporting Web Audio](http://caniuse.com/audio-api).
 
-It will fallback to Audio Element in other browsers (without graphics). You can also try [wavesurfer.swf](https://github.com/laurentvd/wavesurfer.swf) which is a Flash-based fallback.
+It will fallback to Audio Element without graphics in other browsers (IE 11 and lower). You can also try [wavesurfer.swf](https://github.com/laurentvd/wavesurfer.swf) which is a Flash-based fallback.
 
 ## FAQ
 ### Can the audio start playing before the waveform is drawn?
@@ -57,64 +55,20 @@ wavesurfer.load('example/media/demo.wav');
 
 See the documentation on all available [methods](https://wavesurfer-js.org/docs/methods.html), [options](https://wavesurfer-js.org/docs/options.html) and [events](https://wavesurfer-js.org/docs/events.html) on the [homepage](https://wavesurfer-js.org/docs/).
 
-**Note on version 2**: The wavesurfer.js core library and the plugins were refactored to be modular so it can be used with a module bundler. (You can still use wavesurfer without, e.g. with `<script>` tags) The code was also updated to ES6/ES7 syntax and is transpiled with babel and webpack. Read below how to update your code.
+## Upgrade
 
-## Upgrading to version 2
-
-The API has mostly stayed the same but there are some changes to consider:
-
-1. **MultiCanvas renderer is now the default:** It provides all functionality of the Canvas renderer. – Most likely you can simply remove the renderer option – The Canvas renderer has been removed. (The `renderer` option still exists but wavesurfer expects it to be a renderer object, not merely a string.)
-
-2. **Constructor functions instead of object constructors**
-
-```javascript
-// Old:
-var wavesurfer = Object.create(WaveSurfer);
-Wavesurfer.init(options);
-
-// New:
-var wavesurfer = WaveSurfer.create(options);
-// ... or
-var wavesurfer = new WaveSurfer(options);
-wavesurfer.init();
-```
-
-3. **New plugin API:** Previously all plugins had their own initialisation API. The new API replaces all these different ways to do the same thing with one plugin API built into the core library. Plugins are now added as a property of the wavesurfer configuration object during creation. You don't need to initialise the plugins yourself anymore. Below is an example of initialising wavesurfer with plugins (Note the different ways to import the library at the top):
-
-```javascript
-// EITHER - accessing modules with <script> tags
-var WaveSurfer = window.WaveSurfer;
-var TimelinePlugin = window.WaveSurfer.timeline;
-var MinimapPlugin = window.WaveSurfer.minimap;
-
-// OR - importing as es6 module
-import WaveSurfer from 'wavesurfer.js';
-import TimelinePlugin from 'wavesurfer.js/dist/plugin/wavesurfer.timeline.min.js';
-import MinimapPlugin from 'wavesurfer.js/dist/plugin/wavesurfer.minimap.min.js';
-
-// OR - importing as require.js/commonjs modules
-var WaveSurfer = require('wavesurfer.js');
-var TimelinePlugin = require('wavesurfer.js/dist/plugin/wavesurfer.timeline.min.js');
-var MinimapPlugin = require('wavesurfer.js/dist/plugin/wavesurfer.minimap.min.js');
-
-// ... initialising waveform with plugins
-var wavesurfer = WaveSurfer.create({
-    container: '#waveform',
-    waveColor: 'violet',
-    plugins: [
-        TimelinePlugin.create({
-            container: '#wave-timeline'
-        }),
-        MinimapPlugin.create()
-    ]
-});
-```
-
-**Note:** Read more about the plugin API in the documentation.
+See the [upgrade](https://github.com/katspaugh/wavesurfer.js/blob/master/UPGRADE.md) document if you're upgrading from a previous version of wavesurfer.js.
 
 ## Using with a module bundler
 
-Wavesurfer can be used with a module system like this:
+Install Wavesurfer:
+```bash
+npm install wavesurfer.js --save
+# or
+yarn add wavesurfer.js
+```
+
+Use it with a module system like this:
 ```javascript
 // import
 import WaveSurfer from 'wavesurfer.js';
@@ -136,10 +90,9 @@ For a list of  projects using wavesurfer.js, check out
 
 ## Development
 
-[![npm version](https://img.shields.io/npm/v/wavesurfer.js.svg?style=flat)](https://www.npmjs.com/package/wavesurfer.js)
-[![npm](https://img.shields.io/npm/dm/wavesurfer.js.svg)]()
-[![Build Status](https://travis-ci.org/katspaugh/wavesurfer.js.svg?branch=master)](https://travis-ci.org/katspaugh/wavesurfer.js)
+[![Build Status](https://github.com/katspaugh/wavesurfer.js/workflows/wavesurfer.js/badge.svg?branch=master)](https://github.com/katspaugh/wavesurfer.js/actions?workflow=wavesurfer.js)
 [![Coverage Status](https://coveralls.io/repos/github/katspaugh/wavesurfer.js/badge.svg)](https://coveralls.io/github/katspaugh/wavesurfer.js)
+![Size](https://img.shields.io/bundlephobia/minzip/wavesurfer.js.svg?style=flat)
 
 Install development dependencies:
 
@@ -177,14 +130,19 @@ Build documentation with esdoc (generated files are placed in the `doc` director
 npm run doc
 ```
 
+If you want to use [the VS Code - Debugger for Chrome](https://github.com/Microsoft/vscode-chrome-debug), there is already a [launch.json](.vscode/launch.json) with a properly configured ``sourceMapPathOverrides`` for you.
+
 ## Editing documentation
 The homepage and documentation files are maintained in the [`gh-pages` branch](https://github.com/katspaugh/wavesurfer.js/tree/gh-pages). Contributions to the documentation are especially welcome.
 
+## Updating the NPM package
+When preparing a new release, update the version in the `package.json` and have it merged to master. The new version of the package will be published to NPM automatically via GitHub Actions.
+
 ## Credits
 
-Initial idea by [Alex Khokhulin](https://github.com/xoxulin). Many
-thanks to
-[the awesome contributors](https://github.com/katspaugh/wavesurfer.js/contributors)!
+The main maintainer: <img src="https://avatars.githubusercontent.com/u/305679" width="16" height="16" /> [Thijs Triemstra](https://github.com/thijstriemstra)
+
+Many thanks to [all the awesome contributors](https://github.com/katspaugh/wavesurfer.js/contributors)!
 
 ## License
 
